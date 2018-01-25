@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
+from sklearn.datasets import fetch_mldata
 
 # G(z)
 def generator(x):
@@ -124,8 +125,22 @@ lr = 0.0002
 train_epoch = 100
 
 # load MNIST
-mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-train_set = (mnist.train.images - 0.5) / 0.5  # normalization; range: -1 ~ 1
+# mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+# train_set = (mnist.train.images - 0.5) / 0.5  # normalization; range: -1 ~ 1
+
+# load MNIST
+# mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+mnist = fetch_mldata('MNIST original')
+
+train_set = mnist.data[:].astype(np.float32)
+# Mix 'er up
+np.random.shuffle(train_set)
+# Normalize 0,1
+train_set = (train_set-np.min(train_set))/(np.max(train_set)-np.min(train_set))
+# train_set = mnist.train.images
+train_set = (train_set - 0.5) / 0.5  # normalization; range: -1 ~ 1
+# train_set = (train_set - np.mean(train_set)) / np.std(train_set)
+
 
 # networks : generator
 with tf.variable_scope('G'):

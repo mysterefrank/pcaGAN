@@ -8,9 +8,31 @@ from sklearn.datasets import fetch_mldata
 import math, pdb
 from sklearn.decomposition import PCA
 
+
+# def minibatch_discriminator(input_layer, width, name='minibatch_discrim'):
+#     batch_size = input_layer.shape[0]
+#     num_features = input_layer.shape[1]
+#     W = self.variable('W', [num_features, width],
+#                       init=tf.contrib.layers.xavier_initializer())
+#     b = self.variable('b', [width], init=tf.constant_initializer(0.0))
+#     activation = tf.matmul(input_layer, W)
+#     activation = tf.reshape(activation, [batch_size, width])
+#     pdb.set_trace()
+#     tmp1 = tf.expand_dims(activation, 3)
+#     tmp2 = tf.transpose(activation, perm=[1,2,0])
+#     tmp2 = tf.expand_dims(tmp2, 0)
+#     abs_diff = tf.reduce_sum(tf.abs(tmp1 - tmp2), reduction_indices=[2])
+#     f = tf.reduce_sum(tf.exp(-abs_diff), reduction_indices=[2])
+#     f = f + b
+#     return f
+
 def pca_reconstruct(pca, dat0, n_components):
     # Make sure we don't ask for more components than we have
     # assert n_components < 51
+
+    # Halfway through just start training on the real dataset
+    if n_components > 200:
+        return dat0
 
     # Grab the principle components (forward pass through encoder)
     X_train_pca = pca.transform(dat0)
@@ -20,6 +42,10 @@ def pca_reconstruct(pca, dat0, n_components):
 
     # Project back to original space (pass components through decoder)
     X_projected = pca.inverse_transform(X_train_pca)
+    
+    X_projected = (X_projected-np.min(X_projected))/(np.max(X_projected)-np.min(X_projected))
+    # train_set = mnist.train.images
+    X_projected = (X_projected - 0.5) / 0.5  # normalization; range: -1 ~ 1
 
     return X_projected
 
@@ -156,7 +182,7 @@ train_set = (train_set - 0.5) / 0.5  # normalization; range: -1 ~ 1
 # train_set = (train_set - np.mean(train_set)) / np.std(train_set)
 
 # Fit PCA on MNIST
-pca = PCA(n_components=50)
+pca = PCA(n_components=300)
 pca.fit(train_set)
 
 
@@ -216,15 +242,15 @@ for epoch in range(train_epoch):
     for iter in range(train_set.shape[0] // batch_size):
         # update discriminator
         x_ = train_set[iter*batch_size:(iter+1)*batch_size]
-        x_ = pca_reconstruct(pca, x_, int(math.floor(iter/2)))
+        x_ = pca_reconstruct(pca, x_, int(epoch)*3)
         z_ = np.random.normal(0, 1, (batch_size, 100))
 
-        loss_d_, _ = sess.run([D_loss, D_optim], {x: x_, z: z_, drop_out: 0.3})
+        loss_d_, _ = sess.run([D_loss, D_optim], {x: x_, z: z_, drop_out: 0.4})
         D_losses.append(loss_d_)
 
         # update generator
         z_ = np.random.normal(0, 1, (batch_size, 100))
-        loss_g_, _ = sess.run([G_loss, G_optim], {z: z_, drop_out: 0.3})
+        loss_g_, _ = sess.run([G_loss, G_optim], {z: z_, drop_out: 0.4})
         G_losses.append(loss_g_)
 
     epoch_end_time = time.time()
